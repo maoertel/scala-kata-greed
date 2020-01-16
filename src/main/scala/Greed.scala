@@ -1,3 +1,4 @@
+import cats.Applicative
 import cats.data._
 import cats.implicits._
 
@@ -9,17 +10,27 @@ object Greed {
   type Score = Int
   type SingleRule = DieResult => Score
   type CompoundRule = Map[DieValue, Int] => Score
-  type ValidationResult[A] = Validated[DieInputValidationError, A]
+  type ValidationResult[A] = ValidatedNel[DieInputValidationError, A]
 
-  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] =
-    if (dieValues.size > 6) AmountOfDiesError.invalid
-    else if (dieValues.exists(die => die > 6 || die < 1)) DieNotValid.invalid
-    else {
-      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
+  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] = {
+    val a = (if (dieValues.exists(die => die > 6 || die < 1)) DieNotValid.invalid else dieValues.valid).toValidatedNel
+    val b = (if (dieValues.size > 6) AmountOfDiesError.invalid else dieValues.valid).toValidatedNel
+
+    Applicative[ValidationResult].map2(a, b) { (validatedDieValues, _) =>
+      val valueMap = validatedDieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
       val scores = rules.map(rule => rule(valueMap))
 
-      scores.max.valid
+      scores.max
     }
+    //    if (dieValues.size > 6) AmountOfDiesError.invalid
+    //    else if (dieValues.exists(die => die > 6 || die < 1) DieNotValid.invalid
+    //    else {
+    //      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
+    //      val scores = rules.map(rule => rule(valueMap))
+    //
+    //      scores.max.valid
+    //    }
+  }
 }
 
 object Rules {
@@ -96,7 +107,7 @@ object Main extends App {
   val greed50 = Greed.score(List(5))
   val greed800 = Greed.score(List(2, 2, 3, 3, 5, 5))
   val greed0 = Greed.score(List(1, 2, 3))
-  val greedInvalid = Greed.score(List(0,7))
+  val greedInvalid = Greed.score(List(0, 7))
 
   println(greed1000)
   println(greed100)
