@@ -12,25 +12,20 @@ object Greed {
   type CompoundRule = Map[DieValue, Int] => Score
   type ValidationResult[A] = ValidatedNel[DieInputValidationError, A]
 
-  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] = {
-    val a = (if (dieValues.exists(die => die > 6 || die < 1)) DieNotValid.invalid else dieValues.valid).toValidatedNel
-    val b = (if (dieValues.size > 6) AmountOfDiesError.invalid else dieValues.valid).toValidatedNel
-
-    Applicative[ValidationResult].map2(a, b) { (validatedDieValues, _) =>
-      val valueMap = validatedDieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
+  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] =
+    Applicative[ValidationResult].map2(validateDieValues(dieValues), validateAmountOfDies(dieValues)) { (_, _) =>
+      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
       val scores = rules.map(rule => rule(valueMap))
 
       scores.max
     }
-    //    if (dieValues.size > 6) AmountOfDiesError.invalid
-    //    else if (dieValues.exists(die => die > 6 || die < 1) DieNotValid.invalid
-    //    else {
-    //      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
-    //      val scores = rules.map(rule => rule(valueMap))
-    //
-    //      scores.max.valid
-    //    }
-  }
+
+  private def validateAmountOfDies(dieValues: List[DieValue]) =
+    if (dieValues.size > 6) AmountOfDiesError.invalidNel else dieValues.validNel
+
+  private def validateDieValues(dieValues: List[DieValue]) =
+    if (dieValues.exists(die => die > 6 || die < 1)) DieNotValid.invalidNel else dieValues.validNel
+
 }
 
 object Rules {
@@ -40,11 +35,11 @@ object Rules {
   private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
   private def evalSpecialRule(
-                               maybeAmountOfDies: Option[Int],
-                               numOfDifferentDies: Int,
-                               amountOfDies: Int,
-                               score: Score
-                             ): DieValue = maybeAmountOfDies match {
+      maybeAmountOfDies: Option[Int],
+      numOfDifferentDies: Int,
+      amountOfDies: Int,
+      score: Score
+  ): DieValue = maybeAmountOfDies match {
     case Some(amount) if numOfDifferentDies == 1 => evalSingleRule(cond = amount == amountOfDies, score = score)
     case _ => 0
   }
@@ -108,6 +103,7 @@ object Main extends App {
   val greed800 = Greed.score(List(2, 2, 3, 3, 5, 5))
   val greed0 = Greed.score(List(1, 2, 3))
   val greedInvalid = Greed.score(List(0, 7))
+  val greedInvalid2 = Greed.score(List(0, 7, 1, 1, 1, 1, 1, 1))
 
   println(greed1000)
   println(greed100)
@@ -115,4 +111,6 @@ object Main extends App {
   println(greed800)
   println(greed0)
   println(greedInvalid)
+  println(greedInvalid2)
+
 }
