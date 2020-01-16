@@ -1,5 +1,4 @@
 import Rules.CompoundRule
-import cats.Applicative
 import cats.data._
 import cats.implicits._
 
@@ -10,10 +9,7 @@ object Greed {
   type ValidationResult[A] = ValidatedNel[DieInputValidationError, A]
 
   def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] =
-    Applicative[ValidationResult].map2(
-      Validator.validateDieValues(dieValues),
-      Validator.validateAmountOfDies(dieValues)
-    ) { (_, _) =>
+    (Validator.validateDieValues(dieValues), Validator.validateAmountOfDies(dieValues)).mapN { (_, _) =>
       val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
       val scores = rules.map(rule => rule(valueMap))
 
