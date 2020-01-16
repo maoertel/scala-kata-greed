@@ -1,11 +1,11 @@
 case class DieResult(die: Int, amount: Int)
 
-type DieValue = Int
-type Score = Int
-type SingleRule = DieResult => Score
-type CompoundRule = Map[DieValue, Int] => Score
+object Greed {
 
-object Greed extends App {
+  type DieValue = Int
+  type Score = Int
+  type SingleRule = DieResult => Score
+  type CompoundRule = Map[DieValue, Int] => Score
 
   def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): Score = {
     val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
@@ -16,6 +16,8 @@ object Greed extends App {
 }
 
 object Rules {
+
+  import Greed.{CompoundRule, DieValue, Score, SingleRule}
 
   private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
@@ -60,10 +62,9 @@ object Rules {
   }
 
   object Implicits {
-    implicit val specialRules: List[CompoundRule] =
+    implicit val compoundRules: List[CompoundRule] =
       List(straight, threePairs, compoundOfSingleRules, singleOne, singleFive, tripleOne)
   }
-
 }
 
 object Main extends App {
@@ -76,4 +77,9 @@ object Main extends App {
   val greed800 = Greed.score(List(2, 2, 3, 3, 5, 5))
   val greed0 = Greed.score(List(1, 2, 3))
 
+  println(greed1000)
+  println(greed100)
+  println(greed50)
+  println(greed800)
+  println(greed0)
 }
