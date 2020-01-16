@@ -1,3 +1,6 @@
+import cats.data._
+import cats.implicits._
+
 case class DieResult(die: Int, amount: Int)
 
 object Greed {
@@ -6,13 +9,17 @@ object Greed {
   type Score = Int
   type SingleRule = DieResult => Score
   type CompoundRule = Map[DieValue, Int] => Score
+  type ValidationResult[A] = Validated[DieInputValidationError, A]
 
-  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): Score = {
-    val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
-    val scores = rules.map(rule => rule(valueMap))
+  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] =
+    if (dieValues.size > 6) AmountOfDiesError.invalid
+    else if (dieValues.exists(die => die > 6 || die < 1)) DieNotValid.invalid
+    else {
+      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
+      val scores = rules.map(rule => rule(valueMap))
 
-    scores.max
-  }
+      scores.max.valid
+    }
 }
 
 object Rules {
@@ -22,11 +29,11 @@ object Rules {
   private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
   private def evalSpecialRule(
-    maybeAmountOfDies: Option[Int],
-    numOfDifferentDies: Int,
-    amountOfDies: Int,
-    score: Score
-  ): DieValue = maybeAmountOfDies match {
+                               maybeAmountOfDies: Option[Int],
+                               numOfDifferentDies: Int,
+                               amountOfDies: Int,
+                               score: Score
+                             ): DieValue = maybeAmountOfDies match {
     case Some(amount) if numOfDifferentDies == 1 => evalSingleRule(cond = amount == amountOfDies, score = score)
     case _ => 0
   }
@@ -65,6 +72,19 @@ object Rules {
     implicit val compoundRules: List[CompoundRule] =
       List(straight, threePairs, compoundOfSingleRules, singleOne, singleFive, tripleOne)
   }
+
+}
+
+sealed trait DieInputValidationError {
+  def errorMessage: String
+}
+
+case object AmountOfDiesError extends DieInputValidationError {
+  def errorMessage: String = "Too many dies."
+}
+
+case object DieNotValid extends DieInputValidationError {
+  def errorMessage: String = "Only dies from one to six are allowed."
 }
 
 object Main extends App {
@@ -76,10 +96,12 @@ object Main extends App {
   val greed50 = Greed.score(List(5))
   val greed800 = Greed.score(List(2, 2, 3, 3, 5, 5))
   val greed0 = Greed.score(List(1, 2, 3))
+  val greedInvalid = Greed.score(List(0,7))
 
   println(greed1000)
   println(greed100)
   println(greed50)
   println(greed800)
   println(greed0)
+  println(greedInvalid)
 }
