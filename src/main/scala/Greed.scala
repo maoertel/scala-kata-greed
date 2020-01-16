@@ -1,13 +1,11 @@
-import Greed.{DieValue, Score}
-
 case class DieResult(die: Int, amount: Int)
 
-object Greed extends App {
+type DieValue = Int
+type Score = Int
+type SingleRule = DieResult => Score
+type CompoundRule = Map[DieValue, Int] => Score
 
-  type DieValue = Int
-  type Score = Int
-  type SingleRule = DieResult => Score
-  type CompoundRule = Map[DieValue, Int] => Score
+object Greed extends App {
 
   def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): Score = {
     val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
@@ -18,8 +16,6 @@ object Greed extends App {
 }
 
 object Rules {
-
-  import Greed.{CompoundRule, SingleRule}
 
   private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
