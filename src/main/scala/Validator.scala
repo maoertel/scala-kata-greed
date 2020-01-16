@@ -1,5 +1,4 @@
-import Greed.{DieValue, Score, ValidationResult}
-import cats.data.ValidatedNel
+import Greed.{DieValue, ValidationResult}
 import cats.implicits._
 
 object Validator {
