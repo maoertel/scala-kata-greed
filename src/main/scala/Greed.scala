@@ -1,49 +1,63 @@
+import Greed.{DieValue, Score}
+
 case class DieResult(die: Int, amount: Int)
 
-object Greed {
+object Greed extends App {
 
   type DieValue = Int
   type Score = Int
-  type GeneralRule = DieResult => Score
-  type SpecialRule = Map[DieValue, Int] => Score
+  type SingleRule = DieResult => Score
+  type CompoundRule = Map[DieValue, Int] => Score
 
-  def score(dieValues: List[DieValue])(implicit specialRules: List[SpecialRule]): Score = {
+  def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): Score = {
     val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
-    val specialScores = specialRules.map(rule => rule(valueMap))
+    val scores = rules.map(rule => rule(valueMap))
 
-    specialScores.max
+    scores.max
   }
 }
 
 object Rules {
 
-  import Greed.{GeneralRule, SpecialRule}
+  import Greed.{CompoundRule, SingleRule}
 
-  private val singleOne: GeneralRule = dieResult => if (dieResult.die == 1 && dieResult.amount == 1) 100 else 0
-  private val tripleOne: GeneralRule = dieResult => if (dieResult.die == 1 && dieResult.amount == 3) 1000 else 0
-  private val singleFive: GeneralRule = dieResult => if (dieResult.die == 5 && dieResult.amount == 1) 50 else 0
+  private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
-  private val triples: GeneralRule = dieResult => if (dieResult.amount == 3) dieResult.die * 100 else 0
-  private val quadruples: GeneralRule = dieResult => if (dieResult.amount == 4) dieResult.die * 100 * 2 else 0
-  private val quintuples: GeneralRule = dieResult => if (dieResult.amount == 5) dieResult.die * 100 * 4 else 0
-  private val sextuples: GeneralRule = dieResult => if (dieResult.amount == 6) dieResult.die * 100 * 8 else 0
+  private def evalSpecialRule(
+    maybeAmountOfDies: Option[Int],
+    valMapSize: Int,
+    amountOfDies: Int,
+    score: Score
+  ): DieValue = maybeAmountOfDies match {
+    case Some(amount) if valMapSize == 1 => evalSingleRule(cond = amount == amountOfDies, score = score)
+    case _ => 0
+  }
 
-  private val singleSpecialRules = List(singleOne, singleFive, tripleOne)
-  private val singleRules = List(triples, quadruples, quintuples, sextuples)
-  private val compoundSingleRules = singleRules ++ singleSpecialRules
+  private val triples: SingleRule = dieResult => evalSingleRule(cond = dieResult.amount == 3, score = dieResult.die * 100)
+  private val quadruples: SingleRule = dieResult => evalSingleRule(cond = dieResult.amount == 4, score = dieResult.die * 100 * 2)
+  private val quintuples: SingleRule = dieResult => evalSingleRule(cond = dieResult.amount == 5, score = dieResult.die * 100 * 4)
+  private val sextuples: SingleRule = dieResult => evalSingleRule(cond = dieResult.amount == 6, score = dieResult.die * 100 * 8)
+  private val compoundSingleRules = triples :: quadruples :: quintuples :: sextuples :: Nil
 
-  private val compoundRules: SpecialRule = valMap => valMap
-    .map { case (dieValue, amount) => compoundSingleRules.map(rule => rule(DieResult(dieValue, amount))).max }
-    .iterator
-    .sum
-  private val straight: SpecialRule = valMap => if (valMap.size == 6) 1200 else 0
-  private val threePairs: SpecialRule = { valMap =>
+  private val compoundOfSingleRules: CompoundRule = valMap =>
+    valMap
+      .map { case (dieValue, amount) => compoundSingleRules.map(rule => rule(DieResult(dieValue, amount))).max }
+      .iterator
+      .sum
+
+  private val singleOne: CompoundRule = valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), valMapSize = valMap.size, amountOfDies = 1, score = 100)
+  private val tripleOne: CompoundRule = valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), valMapSize = valMap.size, amountOfDies = 3, score = 1000)
+  private val singleFive: CompoundRule = valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(5), valMapSize = valMap.size, amountOfDies = 1, score = 50)
+
+  private val straight: CompoundRule = valMap => if (valMap.size == 6) 1200 else 0
+  private val threePairs: CompoundRule = { valMap =>
     val amounts = valMap.map { case (_, amount) => amount }.toList
     if (amounts.forall(_ == 2) && amounts.size == 3) 800 else 0
   }
 
   object Implicits {
-    implicit val specialRules: List[SpecialRule] = straight :: threePairs :: compoundRules :: Nil
+    implicit val specialRules: List[CompoundRule] =
+      List(straight, threePairs, compoundOfSingleRules, singleOne, singleFive, tripleOne)
   }
 
 }
