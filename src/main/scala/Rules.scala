@@ -1,6 +1,9 @@
+import Greed.{DieValue, Score}
+
 object Rules {
 
-  import Greed.{CompoundRule, DieValue, Score, SingleRule}
+  type SingleRule = DieResult => Score
+  type CompoundRule = Map[DieValue, Int] => Score
 
   private def evalSingleRule(cond: Boolean, score: Score): Score = if (cond) score else 0
 
