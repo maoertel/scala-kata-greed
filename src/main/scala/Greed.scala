@@ -23,11 +23,11 @@ object Rules {
 
   private def evalSpecialRule(
     maybeAmountOfDies: Option[Int],
-    valMapSize: Int,
+    numOfDifferentDies: Int,
     amountOfDies: Int,
     score: Score
   ): DieValue = maybeAmountOfDies match {
-    case Some(amount) if valMapSize == 1 => evalSingleRule(cond = amount == amountOfDies, score = score)
+    case Some(amount) if numOfDifferentDies == 1 => evalSingleRule(cond = amount == amountOfDies, score = score)
     case _ => 0
   }
 
@@ -49,11 +49,11 @@ object Rules {
       .sum
 
   private val singleOne: CompoundRule =
-    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), valMapSize = valMap.size, amountOfDies = 1, score = 100)
+    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), numOfDifferentDies = valMap.size, amountOfDies = 1, score = 100)
   private val tripleOne: CompoundRule =
-    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), valMapSize = valMap.size, amountOfDies = 3, score = 1000)
+    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(1), numOfDifferentDies = valMap.size, amountOfDies = 3, score = 1000)
   private val singleFive: CompoundRule =
-    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(5), valMapSize = valMap.size, amountOfDies = 1, score = 50)
+    valMap => evalSpecialRule(maybeAmountOfDies = valMap.get(5), numOfDifferentDies = valMap.size, amountOfDies = 1, score = 50)
 
   private val straight: CompoundRule = valMap => if (valMap.size == 6) 1200 else 0
   private val threePairs: CompoundRule = { valMap =>
