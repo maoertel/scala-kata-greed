@@ -10,10 +10,10 @@ object Greed {
 
   def score(dieValues: List[DieValue])(implicit rules: List[CompoundRule]): ValidationResult[Score] =
     (Validator.validateDieValues(dieValues), Validator.validateAmountOfDies(dieValues)).mapN { (_, _) =>
-      val valueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
-      val scores = rules.map(rule => rule(valueMap))
+      val dieValueMap = dieValues.groupBy(identity).map { case (dieValue, amount) => (dieValue, amount.size) }
+      val allPossibleScores = rules.map(rule => rule(dieValueMap))
 
-      scores.max
+      allPossibleScores.max
     }
 
 }
